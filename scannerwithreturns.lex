@@ -208,7 +208,7 @@ static int check_type(void)
     }
 }
 
-int main(){
-    yyin = fopen("cTemp.c", "r");
+int main(int argc, char *argv[]){
+    yyin  = fopen(argv[1], "r");
     yyparse();
 }
