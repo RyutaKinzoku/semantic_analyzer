@@ -28,5 +28,7 @@ int main(int argc, char *argv[])
     }
     remove("cTemp.c");
     preprocessing(argv[1], ancestorsDef);
-    command("./result cTemp.c");
+    char result [(sizeof argv[1])+50];
+    sprintf(result, "./result cTemp.c %s", argv[1]);
+    command(result);
 }

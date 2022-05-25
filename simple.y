@@ -1,3 +1,16 @@
+%{
+#include <stdio.h>
+
+extern int yylineno;
+extern int column;
+extern char* yytext;
+extern char line_buffer[1024];
+extern int tokenCounter;
+extern char* filename;
+
+#define YYERROR_VERBOSE 1
+%}
+
 %token	IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
 %token	PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token	AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
@@ -498,6 +511,7 @@ iteration_statement
 	| FOR '(' expression_statement expression_statement expression ')' statement
 	| FOR '(' declaration expression_statement ')' statement
 	| FOR '(' declaration expression_statement expression ')' statement
+	| FOR '(' error {fprintf(stdout,"hola\n");} ')' statement
 	;
 
 jump_statement
@@ -530,19 +544,10 @@ declaration_list
 	;
 
 %%
-#include <stdio.h>
-
-extern int yylineno;
-extern int column;
-extern char* yytext;
-extern char line_buffer[1024];
-extern int tokenCounter;
-
-
-#define YYERROR_VERBOSE 1
 
 void yyerror(const char *str)
 {
+    fprintf(stderr,"In file %s\n", filename);
     fprintf(stderr,"error: %s, in line: %d, in column: %d\n", str, yylineno, column);
     fprintf(stderr,"%s \n", line_buffer);
 	for(int i = 0; i < column + tokenCounter - 2; i++)

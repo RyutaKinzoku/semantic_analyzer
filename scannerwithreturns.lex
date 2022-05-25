@@ -37,6 +37,7 @@ static int check_type(void);
 char line_buffer[1024];
 int line_buffer_index = 0;
 int tokenCounter = 0;
+char* filename;
 
 static int next_column = 1;
     int column = 1;
@@ -210,5 +211,6 @@ static int check_type(void)
 
 int main(int argc, char *argv[]){
     yyin = fopen(argv[1], "r");
+    filename = argv[2];
     yyparse();
 }
