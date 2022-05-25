@@ -15,10 +15,18 @@ int main(int argc, char *argv[])
     printf("Welcome to the syntactic analyzer\n");
     if (argc != 2)
     {
-        printf("Argumento inválido para hacer funcionar este programa debe ingresar:\n ./main nombreArchivo \n");
-        exit(1);
+        printf("Invalid argument, to make this program work you should type:\n ./main fileName \n");
+        exit(-1);
     }
 
+    //Try to open file
+    FILE *inFile = fopen(argv[1], "r");
+    if (inFile == NULL)
+    {
+        printf("Error! Could not open file, to make this program work you should type:\n ./main fileName \n");
+        exit(-1);
+    }
+    remove("cTemp.c");
     preprocessing(argv[1], ancestorsDef);
     command("./result cTemp.c");
 }

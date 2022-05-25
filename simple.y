@@ -195,6 +195,7 @@ declaration
 	: declaration_specifiers ';'
 	| declaration_specifiers init_declarator_list ';'
 	| static_assert_declaration
+	| error ';'
 	;
 
 declaration_specifiers
@@ -510,7 +511,6 @@ jump_statement
 translation_unit
 	: external_declaration
 	| translation_unit external_declaration
-	| error external_declaration {yyerrok; yyclearin;}
 	;
 
 external_declaration
@@ -521,6 +521,7 @@ external_declaration
 function_definition
 	: declaration_specifiers declarator declaration_list compound_statement
 	| declaration_specifiers declarator compound_statement
+	| error compound_statement
 	;
 
 declaration_list

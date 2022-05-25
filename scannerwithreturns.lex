@@ -209,6 +209,6 @@ static int check_type(void)
 }
 
 int main(int argc, char *argv[]){
-    yyin  = fopen(argv[1], "r");
+    yyin = fopen(argv[1], "r");
     yyparse();
 }
