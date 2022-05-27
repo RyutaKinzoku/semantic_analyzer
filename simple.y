@@ -1,5 +1,7 @@
 %{
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #define MAXSTLEN 128
 
 extern int yylineno;
@@ -23,7 +25,7 @@ semanticRec semanticPile[MAXSTLEN*4];
 typedef struct SymbolRec
 {
     char* type;
-    char* value;
+    char* id;
 } symbolRec;
 
 typedef struct SymbolTab
@@ -621,11 +623,62 @@ semanticRec createRS(semanticRecType type){
 }
 
 void openContext(){
-	indexTabP++;
 	symbolTab sTab;
 	symbolTables[indexTabP] = sTab;
+	indexTabP++;
 }
 
 void closeContext(){
 	indexTabP--;
+}
+
+int lookUpTS(char* id){
+	for(int i = indexTabP-1; i >= 0; i--){
+		for(int j = 0; j < symbolTables[i].index; j++){
+			if(!strcmp(symbolTables[i].records[j].id, id)) return 1;
+		}
+	}
+	return 0;
+}
+
+void checkDecl(){
+	if(!lookUpTS(yytext)){
+		fprintf(stderr,"In file %s\n", filename);
+		fprintf(stderr,"error: %s undeclared, in line: %d, in column: %d\n", yytext, yylineno, column);
+		fprintf(stderr,"%s \n", line_buffer);
+		for(int i = 0; i < column + tokenCounter - 2; i++)
+			fprintf(stderr,"_");
+		fprintf(stderr,"^\n");
+	}
+}
+
+void saveType(){
+	semanticRec rs;
+	rs = createRS(TYPE);
+	rs.value = yytext;
+	pushSP(rs);
+}
+
+void saveID(){
+	semanticRec rs;
+	rs = createRS(ID);
+	rs.value = yytext;
+	pushSP(rs);
+}
+
+void insertTS(char* id, char* type){
+	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].id = id;
+	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].type = type;
+	symbolTables[indexTabP-1].index++;
+}
+
+void endDecl(){
+	semanticRec rs;
+	rs = retrieveSP(TYPE);
+	char* type = rs.value;
+	while(semanticPile[indexSP-1].type == ID){
+		insertTS(semanticPile[indexSP-1].value, type);
+		popSP();
+	}
+	popSP();
 }
