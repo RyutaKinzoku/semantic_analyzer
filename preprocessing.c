@@ -240,10 +240,7 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                                 quotes = 2;
                             } else if (c == '\n')
                             {
-                                printf("Warning: There is no left angular bracket in the #include directive\n");
-                                tmp = fopen("cTemp.c", "a+");
-                                fprintf(tmp, "%s", line_buffer);
-                                fclose(tmp);
+                                printf("Warning: There is missing one \" in the #include directive\n");
                                 clear_line_buffer();
                                 quotes = 3;
                             } else if (c == 0)
@@ -252,9 +249,6 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                                 ungetc(c, file);
                                 line_buffer[line_buffer_index-1] = 0;
                                 line_buffer_index--;
-                                tmp = fopen("cTemp.c", "a+");
-                                fprintf(tmp, "%s", line_buffer);
-                                fclose(tmp);
                                 quotes = 3;
                             } else
                             {
@@ -266,14 +260,13 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                         if (buffer_index == 0)
                         {
                             printf("Warning: Expected filename\n");
-                            tmp = fopen("cTemp.c", "a+");
-                            fprintf(tmp, "%s", line_buffer);
-                            fclose(tmp);
+                            clear_line_buffer();
                             continue;
                         }
                         for (c = getc(file); c != '\n' && c != EOF; c = getc(file));
                         ungetc(c, file);
                         if(!isInclude(buffer, ancestors, ancestorsIndex)){
+                            clear_line_buffer();
                             newArray nextAncestorsDef, tmpDef;
                             nextAncestorsDef.index = 0;
                             concatArray(&nextAncestorsDef, &ancestorsDef);
@@ -283,9 +276,7 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                             concatArray(&acumulatedDef, &tmpDef);
                         } else {
                             printf("Warning: There is a cycle in the include directives\n");
-                            tmp = fopen("cTemp.c", "a+");
-                            fprintf(tmp, "%s", line_buffer);
-                            fclose(tmp);
+                            clear_line_buffer();
                             continue;
                         }
                     } else if(c == '<'){
@@ -316,9 +307,6 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                             else if (!isspace(c))
                             {
                                 printf("Warning: Macro names must be identifiers\n");
-                                tmp = fopen("cTemp.c", "a+");
-                                fprintf(tmp, "%s", line_buffer);
-                                fclose(tmp);
                                 clear_line_buffer();
                                 section = 2;
                             }
@@ -388,9 +376,6 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                     }
                     if(c == '\n' && section == 0) {
                         printf("Warning: Expected an expression\n");
-                        tmp = fopen("cTemp.c", "a+");
-                        fprintf(tmp, "%s\n", line_buffer);
-                        fclose(tmp);
                         continue;
                     }
                     if(section == 2) {
@@ -402,9 +387,6 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                     if (buffer_index == 0)
                     {
                         printf("Warning: Expected an expresion\n");
-                        tmp = fopen("cTemp.c", "a+");
-                        fprintf(tmp, "%s", line_buffer);
-                        fclose(tmp);
                         continue;
                     }
                     strcpy(actualDef.expression, buffer);
