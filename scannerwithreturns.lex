@@ -38,6 +38,7 @@ char line_buffer[1024];
 int line_buffer_index = 0;
 int tokenCounter = 0;
 int indexSP = 0;
+int indexTabP = 0;
 char* filename;
 
 static int next_column = 1;

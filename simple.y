@@ -4,12 +4,12 @@
 
 extern int yylineno;
 extern int indexSP;
+extern int indexTabP;
 extern int column;
 extern char* yytext;
 extern char line_buffer[1024];
 extern int tokenCounter;
 extern char* filename;
-
 typedef enum{TYPE, ID} semanticRecType;
 
 typedef struct SemanticRec
@@ -26,7 +26,13 @@ typedef struct SymbolRec
     char* value;
 } symbolRec;
 
-symbolRec symbolTables[MAXSTLEN][MAXSTLEN*4];
+typedef struct SymbolTab
+{
+	symbolRec records[MAXSTLEN*4];
+	int index;
+} symbolTab;
+
+symbolTab symbolTables[MAXSTLEN];
 
 #define YYERROR_VERBOSE 1
 %}
@@ -614,3 +620,12 @@ semanticRec createRS(semanticRecType type){
 	return rs;
 }
 
+void openContext(){
+	indexTabP++;
+	symbolTab sTab;
+	symbolTables[indexTabP] = sTab;
+}
+
+void closeContext(){
+	indexTabP--;
+}
