@@ -1,12 +1,30 @@
 %{
 #include <stdio.h>
+#define MAXSTLEN 128
 
 extern int yylineno;
+extern int indexSP;
 extern int column;
 extern char* yytext;
 extern char line_buffer[1024];
 extern int tokenCounter;
 extern char* filename;
+
+typedef struct SemanticRec
+{
+    enum semanticRecType {TYPE, ID} type;
+    char* value;
+} semanticRec;
+
+semanticRec semanticPile[MAXSTLEN*4];
+
+typedef struct SymbolRec
+{
+    char* type;
+    char* value;
+} symbolRec;
+
+symbolRec symbolTables[MAXSTLEN][MAXSTLEN*4];
 
 #define YYERROR_VERBOSE 1
 %}
@@ -511,7 +529,6 @@ iteration_statement
 	| FOR '(' expression_statement expression_statement expression ')' statement
 	| FOR '(' declaration expression_statement ')' statement
 	| FOR '(' declaration expression_statement expression ')' statement
-	| FOR '(' error {fprintf(stdout,"hola\n");} ')' statement
 	;
 
 jump_statement
@@ -554,3 +571,44 @@ void yyerror(const char *str)
         fprintf(stderr,"_");
     fprintf(stderr,"^\n");
 }
+
+void pushSP(semanticRec rs1){
+	if(indexSP == MAXSTLEN*4){
+		fprintf(stdout, "Semantic Stack Overflow");
+		exit(-1);
+	} else {
+		semanticPile[indexSP] = rs1;
+		indexSP++;
+	}
+}
+
+void popSP(){
+	indexSP--;
+}
+
+semanticRec retrieveSP(semanticRecType type){
+	int i;
+	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	return semanticPile[i];
+}
+
+void deleteSP(semanticRecType type){
+	int i;
+	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	for(i < indexSP; i++){
+		semanticPile[i] = semanticPile[i+1];
+	}
+}
+
+void update(semanticRecType type, char* value){
+	int i;
+	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	semanticPile[i].value = value;
+}
+
+semanticRec createRS(semanticRecType type){
+	semanticRec rs;
+	rs.type = type;
+	return rs;
+}
+
