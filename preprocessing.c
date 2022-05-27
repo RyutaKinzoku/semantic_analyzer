@@ -132,10 +132,6 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
     if (inFile == NULL)
     {
         printf("Error! Could not open file\n");
-        tmp = fopen("cTemp.c", "a+");
-        fprintf(tmp, "%s\n", line_buffer);
-        fclose(tmp);
-        acumulatedDef.index = -1;
         return acumulatedDef;
     }
     char tempfile[12];
@@ -219,24 +215,18 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                     for(c = getc(file); c == ' '; c = getc(file)){
                         line_buffer_char(c);
                     }
-                    if(!isspace(c) && c != '\"'){
+                    if(!isspace(c) && c != '\"' && c != '<'){
                         error = 1;
                     }
                     if(c == '\n' || c == EOF){
                         printf("%s\n", line_buffer);
-                        printf("Warning: Expected <Filename> or \"Filename\"\n");
-                        tmp = fopen("cTemp.c", "a+");
-                        fprintf(tmp, "%s\n", line_buffer);
-                        fclose(tmp);
+                        printf("Warning: Expected \"Filename\"\n");
                         clear_line_buffer();
                         ungetc(c, file);
                         continue;
                     }
                     if(error == 1){
-                        printf("Warning: Expected <Filename> or \"Filename\"\n");
-                        tmp = fopen("cTemp.c", "a+");
-                        fprintf(tmp, "%s", line_buffer);
-                        fclose(tmp);
+                        printf("Warning: Expected \"Filename\"\n");
                         clear_line_buffer();
                         ungetc(c, file);
                         continue;
@@ -298,10 +288,9 @@ newArray preprocessing(char* pfileName, newArray ancestorsDef){
                             fclose(tmp);
                             continue;
                         }
-                    } else {
-                        tmp = fopen("cTemp.c", "a+");
-                        fprintf(tmp, "%s", line_buffer);
-                        fclose(tmp);
+                    } else if(c == '<'){
+                        clear_line_buffer();
+                        for (c = getc(file); c != '\n' && c != EOF; c = getc(file));
                     }
                 } else if(!strcmp(buffer, "define")){
                     clear_buffer();

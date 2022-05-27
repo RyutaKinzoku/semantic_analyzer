@@ -10,9 +10,11 @@ extern char line_buffer[1024];
 extern int tokenCounter;
 extern char* filename;
 
+typedef enum{TYPE, ID} semanticRecType;
+
 typedef struct SemanticRec
 {
-    enum semanticRecType {TYPE, ID} type;
+    semanticRecType type;
     char* value;
 } semanticRec;
 
@@ -595,7 +597,7 @@ semanticRec retrieveSP(semanticRecType type){
 void deleteSP(semanticRecType type){
 	int i;
 	for(i = indexSP-1; semanticPile[i].type == type; i--);
-	for(i < indexSP; i++){
+	for(i; i < indexSP; i++){
 		semanticPile[i] = semanticPile[i+1];
 	}
 }
