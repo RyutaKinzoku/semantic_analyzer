@@ -108,8 +108,8 @@ postfix_expression
 	| postfix_expression PTR_OP IDENTIFIER
 	| postfix_expression INC_OP
 	| postfix_expression DEC_OP
-	| '(' type_name ')' '{' initializer_list '}'
-	| '(' type_name ')' '{' initializer_list ',' '}'
+	| '(' type_name ')' '{' {openContext();} initializer_list '}' {closeContext();}
+	| '(' type_name ')' '{' {openContext();} initializer_list ',' '}' {closeContext();}
 	;
 
 argument_expression_list
@@ -234,7 +234,7 @@ constant_expression
 
 declaration
 	: declaration_specifiers ';'
-	| declaration_specifiers init_declarator_list ';'
+	| declaration_specifiers init_declarator_list ';' {endDecl();}
 	| static_assert_declaration
 	| error ';'
 	;
@@ -275,7 +275,7 @@ type_specifier
 	: VOID
 	| CHAR
 	| SHORT
-	| INT
+	| INT {saveType();}
 	| LONG
 	| FLOAT
 	| DOUBLE
@@ -375,7 +375,7 @@ declarator
 	;
 
 direct_declarator
-	: IDENTIFIER
+	: IDENTIFIER {saveID();}
 	| '(' declarator ')'
 	| direct_declarator '[' ']'
 	| direct_declarator '[' '*' ']'
@@ -461,8 +461,8 @@ direct_abstract_declarator
 	;
 
 initializer
-	: '{' initializer_list '}'
-	| '{' initializer_list ',' '}'
+	: '{' {openContext();} initializer_list '}' {closeContext();}
+	| '{' {openContext();} initializer_list ',' '}' {closeContext();}
 	| assignment_expression
 	;
 
@@ -508,7 +508,7 @@ labeled_statement
 
 compound_statement
 	: '{' '}'
-	| '{'  block_item_list '}'
+	| '{' block_item_list '}'
 	;
 
 block_item_list
