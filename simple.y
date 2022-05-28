@@ -9,6 +9,7 @@ extern int indexSP;
 extern int indexTabP;
 extern int column;
 extern char* yytext;
+extern char* yylval;
 extern char line_buffer[1024];
 extern int tokenCounter;
 extern char* filename;
@@ -37,6 +38,122 @@ typedef struct SymbolTab
 symbolTab symbolTables[MAXSTLEN];
 
 #define YYERROR_VERBOSE 1
+
+void pushSP(semanticRec rs1){
+	if(indexSP == MAXSTLEN*4){
+		fprintf(stdout, "Semantic Stack Overflow");
+		exit(-1);
+	} else {
+		semanticPile[indexSP] = rs1;
+		indexSP++;
+	}
+}
+
+void popSP(){
+	indexSP--;
+}
+
+semanticRec retrieveSP(semanticRecType type){
+	int i;
+	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	return semanticPile[i];
+}
+
+void deleteSP(semanticRecType type){
+	int i;
+	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	for(i; i < indexSP; i++){
+		semanticPile[i] = semanticPile[i+1];
+	}
+}
+
+void update(semanticRecType type, char* value){
+	int i;
+	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	semanticPile[i].value = value;
+}
+
+semanticRec createRS(semanticRecType type){
+	semanticRec rs;
+	rs.type = type;
+	return rs;
+}
+
+void openContext(){
+	symbolTab sTab;
+	symbolTables[indexTabP] = sTab;
+	indexTabP++;
+}
+
+void closeContext(){
+	fprintf(stdout,"Symbol Table \n");
+	for(int i = 0; i < symbolTables[indexTabP-1].index; i++){
+		fprintf(stdout,"%d- Type: %s,\tID:%s\n", i, symbolTables[indexTabP-1].records[i].type, symbolTables[indexTabP-1].records[i].id);
+	}
+	indexTabP--;
+}
+
+int lookUpTS(char* id){
+	for(int i = indexTabP-1; i >= 0; i--){
+		for(int j = 0; j < symbolTables[i].index; j++){
+			if(!strcmp(symbolTables[i].records[j].id, id)) return 1;
+		}
+	}
+	return 0;
+}
+
+void checkDecl(){
+	if(!lookUpTS(yylval)){
+		fprintf(stderr,"In file %s\n", filename);
+		fprintf(stderr,"error: %s undeclared, in line: %d, in column: %d\n", yylval, yylineno, column);
+		fprintf(stderr,"%s \n", line_buffer);
+		for(int i = 0; i < column + tokenCounter - 2; i++)
+			fprintf(stderr,"_");
+		fprintf(stderr,"^\n");
+	}
+}
+
+void saveType(){
+	semanticRec rs;
+	rs = createRS(TYPE);
+	rs.value = yylval;
+	pushSP(rs);
+}
+
+void saveID(){
+	semanticRec rs;
+	rs = createRS(ID);
+	rs.value = yylval;
+	pushSP(rs);
+}
+
+void insertTS(char* id, char* type){
+	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].id = id;
+	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].type = type;
+	symbolTables[indexTabP-1].index++;
+}
+
+void endDecl(){
+	semanticRec rs;
+	rs = retrieveSP(TYPE);
+	char* type = rs.value;
+	while(semanticPile[indexSP-1].type == ID){
+		insertTS(semanticPile[indexSP-1].value, type);
+		popSP();
+	}
+	popSP();
+    fprintf(stdout,"terminardeclaracion\n");
+}
+
+void yyerror(const char *str)
+{
+    fprintf(stderr,"In file %s\n", filename);
+    fprintf(stderr,"error: %s, in line: %d, in column: %d\n", str, yylineno, column);
+    fprintf(stderr,"%s \n", line_buffer);
+	for(int i = 0; i < column + tokenCounter - 2; i++)
+        fprintf(stderr,"_");
+    fprintf(stderr,"^\n");
+}
 %}
 
 %token	IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
@@ -56,9 +173,9 @@ symbolTab symbolTables[MAXSTLEN];
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-%start translation_unit
+%start init
 
-%error-verbose
+%define parse.error verbose
 
 %%
 
@@ -108,8 +225,8 @@ postfix_expression
 	| postfix_expression PTR_OP IDENTIFIER
 	| postfix_expression INC_OP
 	| postfix_expression DEC_OP
-	| '(' type_name ')' '{' {openContext();} initializer_list '}' {closeContext();}
-	| '(' type_name ')' '{' {openContext();} initializer_list ',' '}' {closeContext();}
+	| '(' type_name ')' '{' initializer_list '}'
+	| '(' type_name ')' '{' initializer_list ',' '}'
 	;
 
 argument_expression_list
@@ -461,8 +578,8 @@ direct_abstract_declarator
 	;
 
 initializer
-	: '{' {openContext();} initializer_list '}' {closeContext();}
-	| '{' {openContext();} initializer_list ',' '}' {closeContext();}
+	: '{' initializer_list '}'
+	| '{' initializer_list ',' '}'
 	| assignment_expression
 	;
 
@@ -508,7 +625,7 @@ labeled_statement
 
 compound_statement
 	: '{' '}'
-	| '{' block_item_list '}'
+	| '{' {openContext();} block_item_list '}' {closeContext();}
 	;
 
 block_item_list
@@ -549,6 +666,10 @@ jump_statement
 	| RETURN expression ';'
 	;
 
+init
+	: {openContext();} translation_unit {closeContext();}
+	;
+
 translation_unit
 	: external_declaration
 	| translation_unit external_declaration
@@ -572,113 +693,3 @@ declaration_list
 
 %%
 
-void yyerror(const char *str)
-{
-    fprintf(stderr,"In file %s\n", filename);
-    fprintf(stderr,"error: %s, in line: %d, in column: %d\n", str, yylineno, column);
-    fprintf(stderr,"%s \n", line_buffer);
-	for(int i = 0; i < column + tokenCounter - 2; i++)
-        fprintf(stderr,"_");
-    fprintf(stderr,"^\n");
-}
-
-void pushSP(semanticRec rs1){
-	if(indexSP == MAXSTLEN*4){
-		fprintf(stdout, "Semantic Stack Overflow");
-		exit(-1);
-	} else {
-		semanticPile[indexSP] = rs1;
-		indexSP++;
-	}
-}
-
-void popSP(){
-	indexSP--;
-}
-
-semanticRec retrieveSP(semanticRecType type){
-	int i;
-	for(i = indexSP-1; semanticPile[i].type == type; i--);
-	return semanticPile[i];
-}
-
-void deleteSP(semanticRecType type){
-	int i;
-	for(i = indexSP-1; semanticPile[i].type == type; i--);
-	for(i; i < indexSP; i++){
-		semanticPile[i] = semanticPile[i+1];
-	}
-}
-
-void update(semanticRecType type, char* value){
-	int i;
-	for(i = indexSP-1; semanticPile[i].type == type; i--);
-	semanticPile[i].value = value;
-}
-
-semanticRec createRS(semanticRecType type){
-	semanticRec rs;
-	rs.type = type;
-	return rs;
-}
-
-void openContext(){
-	symbolTab sTab;
-	symbolTables[indexTabP] = sTab;
-	indexTabP++;
-}
-
-void closeContext(){
-	indexTabP--;
-}
-
-int lookUpTS(char* id){
-	for(int i = indexTabP-1; i >= 0; i--){
-		for(int j = 0; j < symbolTables[i].index; j++){
-			if(!strcmp(symbolTables[i].records[j].id, id)) return 1;
-		}
-	}
-	return 0;
-}
-
-void checkDecl(){
-	if(!lookUpTS(yytext)){
-		fprintf(stderr,"In file %s\n", filename);
-		fprintf(stderr,"error: %s undeclared, in line: %d, in column: %d\n", yytext, yylineno, column);
-		fprintf(stderr,"%s \n", line_buffer);
-		for(int i = 0; i < column + tokenCounter - 2; i++)
-			fprintf(stderr,"_");
-		fprintf(stderr,"^\n");
-	}
-}
-
-void saveType(){
-	semanticRec rs;
-	rs = createRS(TYPE);
-	rs.value = yytext;
-	pushSP(rs);
-}
-
-void saveID(){
-	semanticRec rs;
-	rs = createRS(ID);
-	rs.value = yytext;
-	pushSP(rs);
-}
-
-void insertTS(char* id, char* type){
-	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].id = id;
-	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].type = type;
-	symbolTables[indexTabP-1].index++;
-}
-
-void endDecl(){
-	semanticRec rs;
-	rs = retrieveSP(TYPE);
-	char* type = rs.value;
-	while(semanticPile[indexSP-1].type == ID){
-		insertTS(semanticPile[indexSP-1].value, type);
-		popSP();
-	}
-	popSP();
-}

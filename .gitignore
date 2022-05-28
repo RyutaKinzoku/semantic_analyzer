@@ -83,3 +83,4 @@ result
 .vscode/settings.json
 .vscode/dryrun.log
 .vscode/configurationCache.log
+*.y~
