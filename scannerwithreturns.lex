@@ -207,7 +207,7 @@ static int check_type(void)
     case ENUMERATION_CONSTANT:        /* previously defined */
         return ENUMERATION_CONSTANT;
     default:                          /* includes undefined */
-        yylval = value;
+        //printf("%s\n", yytext);
         return IDENTIFIER;
     }
 }

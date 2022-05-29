@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define MAXSTLEN 128
+#define YYSTYPE char*
 
 extern int yylineno;
 extern int indexSP;
@@ -113,17 +114,17 @@ void checkDecl(){
 	}
 }
 
-void saveType(){
+void saveType(char* currentToken){
 	semanticRec rs;
 	rs = createRS(TYPE);
-	rs.value = yylval;
+	rs.value = currentToken;
 	pushSP(rs);
 }
 
-void saveID(){
+void saveID(char* currentToken){
 	semanticRec rs;
 	rs = createRS(ID);
-	rs.value = yylval;
+	rs.value = currentToken;
 	pushSP(rs);
 }
 
@@ -142,7 +143,6 @@ void endDecl(){
 		popSP();
 	}
 	popSP();
-    fprintf(stdout,"terminardeclaracion\n");
 }
 
 void yyerror(const char *str)
@@ -156,7 +156,9 @@ void yyerror(const char *str)
 }
 %}
 
-%token	IDENTIFIER I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
+%token IDENTIFIER
+
+%token	I_CONSTANT F_CONSTANT STRING_LITERAL FUNC_NAME SIZEOF
 %token	PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token	AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token	SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
@@ -177,10 +179,14 @@ void yyerror(const char *str)
 
 %define parse.error verbose
 
+
 %%
 
+id
+	: IDENTIFIER {$$ = strdup(yytext);}
+
 primary_expression
-	: IDENTIFIER
+	: id
 	| constant
 	| string
 	| '(' expression ')'
@@ -194,7 +200,7 @@ constant
 	;
 
 enumeration_constant		/* before it has been defined as such */
-	: IDENTIFIER
+	: id
 	;
 
 string
@@ -221,8 +227,8 @@ postfix_expression
 	| postfix_expression '[' expression ']'
 	| postfix_expression '(' ')'
 	| postfix_expression '(' argument_expression_list ')'
-	| postfix_expression '.' IDENTIFIER
-	| postfix_expression PTR_OP IDENTIFIER
+	| postfix_expression '.' id
+	| postfix_expression PTR_OP id
 	| postfix_expression INC_OP
 	| postfix_expression DEC_OP
 	| '(' type_name ')' '{' initializer_list '}'
@@ -392,7 +398,7 @@ type_specifier
 	: VOID
 	| CHAR
 	| SHORT
-	| INT {saveType();}
+	| INT {saveType($1);}
 	| LONG
 	| FLOAT
 	| DOUBLE
@@ -409,8 +415,8 @@ type_specifier
 
 struct_or_union_specifier
 	: struct_or_union '{' struct_declaration_list '}'
-	| struct_or_union IDENTIFIER '{' struct_declaration_list '}'
-	| struct_or_union IDENTIFIER
+	| struct_or_union id  '{' struct_declaration_list '}'
+	| struct_or_union id
 	;
 
 struct_or_union
@@ -450,9 +456,9 @@ struct_declarator
 enum_specifier
 	: ENUM '{' enumerator_list '}'
 	| ENUM '{' enumerator_list ',' '}'
-	| ENUM IDENTIFIER '{' enumerator_list '}'
-	| ENUM IDENTIFIER '{' enumerator_list ',' '}'
-	| ENUM IDENTIFIER
+	| ENUM id  '{' enumerator_list '}'
+	| ENUM id  '{' enumerator_list ',' '}'
+	| ENUM id 
 	;
 
 enumerator_list
@@ -492,7 +498,7 @@ declarator
 	;
 
 direct_declarator
-	: IDENTIFIER {saveID();}
+	: id {saveID($1);}
 	| '(' declarator ')'
 	| direct_declarator '[' ']'
 	| direct_declarator '[' '*' ']'
@@ -538,8 +544,8 @@ parameter_declaration
 	;
 
 identifier_list
-	: IDENTIFIER
-	| identifier_list ',' IDENTIFIER
+	: id
+	| identifier_list ',' id
 	;
 
 type_name
@@ -601,7 +607,7 @@ designator_list
 
 designator
 	: '[' constant_expression ']'
-	| '.' IDENTIFIER
+	| '.' id
 	;
 
 static_assert_declaration
@@ -618,7 +624,7 @@ statement
 	;
 
 labeled_statement
-	: IDENTIFIER ':' statement
+	: id  ':' statement
 	| CASE constant_expression ':' statement
 	| DEFAULT ':' statement
 	;
@@ -659,7 +665,7 @@ iteration_statement
 	;
 
 jump_statement
-	: GOTO IDENTIFIER ';'
+	: GOTO id  ';'
 	| CONTINUE ';'
 	| BREAK ';'
 	| RETURN ';'
