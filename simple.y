@@ -56,13 +56,13 @@ void popSP(){
 
 semanticRec retrieveSP(semanticRecType type){
 	int i;
-	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	for(i = indexSP-1; semanticPile[i].type != type; i--);
 	return semanticPile[i];
 }
 
 void deleteSP(semanticRecType type){
 	int i;
-	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	for(i = indexSP-1; semanticPile[i].type != type; i--);
 	for(i; i < indexSP; i++){
 		semanticPile[i] = semanticPile[i+1];
 	}
@@ -70,7 +70,7 @@ void deleteSP(semanticRecType type){
 
 void update(semanticRecType type, char* value){
 	int i;
-	for(i = indexSP-1; semanticPile[i].type == type; i--);
+	for(i = indexSP-1; semanticPile[i].type != type; i--);
 	semanticPile[i].value = value;
 }
 
@@ -365,12 +365,12 @@ declaration
 declaration_specifiers
 	: storage_class_specifier declaration_specifiers
 	| storage_class_specifier
-	| type_specifier declaration_specifiers
-	| type_specifier
+	| type_specifier {saveType($1);} declaration_specifiers
+	| type_specifier {saveType($1);}
 	| type_qualifier declaration_specifiers
 	| type_qualifier
-	| function_specifier declaration_specifiers
-	| function_specifier
+	| function_specifier {saveType($1);} declaration_specifiers
+	| function_specifier {saveType($1);}
 	| alignment_specifier declaration_specifiers
 	| alignment_specifier
 	;
@@ -398,7 +398,7 @@ type_specifier
 	: VOID
 	| CHAR
 	| SHORT
-	| INT {saveType($1);}
+	| INT {$$ = strdup(yytext);}
 	| LONG
 	| FLOAT
 	| DOUBLE
@@ -688,7 +688,7 @@ external_declaration
 
 function_definition
 	: declaration_specifiers declarator declaration_list compound_statement
-	| declaration_specifiers declarator compound_statement
+	| declaration_specifiers declarator {endDecl();} compound_statement
 	| error compound_statement
 	;
 
