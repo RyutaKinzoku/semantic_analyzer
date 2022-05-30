@@ -15,19 +15,21 @@ extern char line_buffer[1024];
 extern int tokenCounter;
 extern char* filename;
 typedef enum{TYPE, ID} semanticRecType;
+char typeBuffer[MAXSTLEN*4];
+int typeBufferIndex = 0;
 
 typedef struct SemanticRec
 {
     semanticRecType type;
-    char* value;
+    char value[MAXSTLEN*2];
 } semanticRec;
 
 semanticRec semanticPile[MAXSTLEN*4];
 
 typedef struct SymbolRec
 {
-    char* type;
-    char* id;
+    char type[MAXSTLEN*2];
+    char id[MAXSTLEN*2];
 } symbolRec;
 
 typedef struct SymbolTab
@@ -39,6 +41,20 @@ typedef struct SymbolTab
 symbolTab symbolTables[MAXSTLEN];
 
 #define YYERROR_VERBOSE 1
+
+void concatType(char* type){
+	for(int i = 0; i < strlen(type); i++){
+		typeBuffer[typeBufferIndex] = type[i];
+		typeBufferIndex++;
+	}
+	typeBuffer[typeBufferIndex] = ' ';
+	typeBufferIndex++;
+}
+
+void clear_buffer(void){
+    memset(typeBuffer, 0, sizeof typeBuffer);
+    typeBufferIndex = 0;
+}
 
 void pushSP(semanticRec rs1){
 	if(indexSP == MAXSTLEN*4){
@@ -71,7 +87,7 @@ void deleteSP(semanticRecType type){
 void update(semanticRecType type, char* value){
 	int i;
 	for(i = indexSP-1; semanticPile[i].type != type; i--);
-	semanticPile[i].value = value;
+	strcpy(semanticPile[i].value, value);
 }
 
 semanticRec createRS(semanticRecType type){
@@ -87,9 +103,10 @@ void openContext(){
 }
 
 void closeContext(){
+	symbolRec* records = symbolTables[indexTabP-1].records;
 	fprintf(stdout,"Symbol Table \n");
 	for(int i = 0; i < symbolTables[indexTabP-1].index; i++){
-		fprintf(stdout,"%d- Type: %s,\tID:%s\n", i, symbolTables[indexTabP-1].records[i].type, symbolTables[indexTabP-1].records[i].id);
+		fprintf(stdout,"%d- Type: %s,\tID:%s\n", i, records[i].type, records[i].id);
 	}
 	indexTabP--;
 }
@@ -115,22 +132,30 @@ void checkDecl(){
 }
 
 void saveType(char* currentToken){
+	currentToken[strlen(currentToken)-1] = '\0';
 	semanticRec rs;
 	rs = createRS(TYPE);
-	rs.value = currentToken;
+	strcpy(rs.value, currentToken);
 	pushSP(rs);
+	clear_buffer();
 }
 
 void saveID(char* currentToken){
 	semanticRec rs;
 	rs = createRS(ID);
-	rs.value = currentToken;
+	strcpy(rs.value, currentToken);
 	pushSP(rs);
 }
 
-void insertTS(char* id, char* type){
-	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].id = id;
-	symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].type = type;
+void insertTS(char* pId, char* pType){
+	symbolTab table = symbolTables[indexTabP-1];
+	int tableIndex = symbolTables[indexTabP-1].index;
+	char* id = table.records[tableIndex].id;
+	char* type = table.records[tableIndex].type;
+	strcpy(id, pId);
+	strcpy(type, pType);
+	strcpy(symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].id, id);
+	strcpy(symbolTables[indexTabP-1].records[symbolTables[indexTabP-1].index].type, type);
 	symbolTables[indexTabP-1].index++;
 }
 
@@ -363,16 +388,16 @@ declaration
 	;
 
 declaration_specifiers
-	: storage_class_specifier declaration_specifiers
-	| storage_class_specifier
-	| type_specifier {saveType($1);} declaration_specifiers
-	| type_specifier {saveType($1);}
-	| type_qualifier declaration_specifiers
-	| type_qualifier
-	| function_specifier {saveType($1);} declaration_specifiers
-	| function_specifier {saveType($1);}
-	| alignment_specifier declaration_specifiers
-	| alignment_specifier
+	: storage_class_specifier {concatType($1);} declaration_specifiers
+	| storage_class_specifier {concatType($1); saveType(typeBuffer);}
+	| type_specifier {concatType($1);} declaration_specifiers
+	| type_specifier {concatType($1); saveType(typeBuffer);}
+	| type_qualifier {concatType($1);} declaration_specifiers
+	| type_qualifier {concatType($1); saveType(typeBuffer);}
+	| function_specifier {concatType($1);} declaration_specifiers
+	| function_specifier {concatType($1); saveType(typeBuffer);}
+	| alignment_specifier {concatType($1);} declaration_specifiers
+	| alignment_specifier {concatType($1); saveType(typeBuffer);}
 	;
 
 init_declarator_list
@@ -386,31 +411,31 @@ init_declarator
 	;
 
 storage_class_specifier
-	: TYPEDEF	/* identifiers must be flagged as TYPEDEF_NAME */
-	| EXTERN
-	| STATIC
-	| THREAD_LOCAL
-	| AUTO
-	| REGISTER
+	: TYPEDEF {$$ = strdup(yytext);}	/* identifiers must be flagged as TYPEDEF_NAME */
+	| EXTERN {$$ = strdup(yytext);}
+	| STATIC {$$ = strdup(yytext);}
+	| THREAD_LOCAL {$$ = strdup(yytext);}
+	| AUTO {$$ = strdup(yytext);}
+	| REGISTER {$$ = strdup(yytext);}
 	;
 
 type_specifier
-	: VOID
-	| CHAR
-	| SHORT
+	: VOID {$$ = strdup(yytext);}
+	| CHAR {$$ = strdup(yytext);}
+	| SHORT {$$ = strdup(yytext);}
 	| INT {$$ = strdup(yytext);}
-	| LONG
-	| FLOAT
-	| DOUBLE
-	| SIGNED
-	| UNSIGNED
-	| BOOL
-	| COMPLEX
-	| IMAGINARY	  	/* non-mandated extension */
+	| LONG {$$ = strdup(yytext);}
+	| FLOAT {$$ = strdup(yytext);}
+	| DOUBLE {$$ = strdup(yytext);}
+	| SIGNED {$$ = strdup(yytext);}
+	| UNSIGNED {$$ = strdup(yytext);}
+	| BOOL {$$ = strdup(yytext);}
+	| COMPLEX {$$ = strdup(yytext);}
+	| IMAGINARY	 {$$ = strdup(yytext);}  	/* non-mandated extension */
 	| atomic_type_specifier
 	| struct_or_union_specifier
 	| enum_specifier
-	| TYPEDEF_NAME		/* after it has been defined as such */
+	| TYPEDEF_NAME  {$$ = strdup(yytext);}	/* after it has been defined as such */
 	;
 
 struct_or_union_specifier
@@ -476,15 +501,15 @@ atomic_type_specifier
 	;
 
 type_qualifier
-	: CONST
-	| RESTRICT
-	| VOLATILE
-	| ATOMIC
+	: CONST {$$ = strdup(yytext);}
+	| RESTRICT {$$ = strdup(yytext);}
+	| VOLATILE {$$ = strdup(yytext);}
+	| ATOMIC {$$ = strdup(yytext);}
 	;
 
 function_specifier
-	: INLINE
-	| NORETURN
+	: INLINE {$$ = strdup(yytext);}
+	| NORETURN {$$ = strdup(yytext);}
 	;
 
 alignment_specifier
