@@ -67,12 +67,13 @@ void pushSP(semanticRec rs1){
 }
 
 void popSP(){
+	semanticPile[indexSP-1] = semanticPile[indexSP];
 	indexSP--;
 }
 
 semanticRec retrieveSP(semanticRecType type){
 	int i;
-	for(i = indexSP-1; semanticPile[i].type != type; i--);
+	for(i = indexSP-1; semanticPile[i].type != type && i>0; i--);
 	return semanticPile[i];
 }
 
@@ -100,6 +101,7 @@ void openContext(){
 	symbolTab sTab;
 	symbolTables[indexTabP] = sTab;
 	indexTabP++;
+	symbolTables[indexTabP-1].index = 0;
 }
 
 void closeContext(){
@@ -111,6 +113,26 @@ void closeContext(){
 	indexTabP--;
 }
 
+int lookUpTopTS(char* id){
+	for(int i = 0; i < symbolTables[indexTabP-1].index; i++){
+		if(!strcmp(symbolTables[indexTabP-1].records[i].id, id)) return 0;
+	}
+	return 1;
+}
+
+int checkUndecl(char* token){
+	int result = !lookUpTopTS(token);
+	if(result){
+		fprintf(stderr,"In file %s\n", filename);
+		fprintf(stderr,"error: %s already declared, in line: %d, in column: %d\n", token, yylineno, column);
+		fprintf(stderr,"%s \n", line_buffer);
+		for(int i = 0; i < column + tokenCounter - 2; i++)
+			fprintf(stderr,"_");
+		fprintf(stderr,"^\n");
+	}
+	return !result;
+}
+
 int lookUpTS(char* id){
 	for(int i = indexTabP-1; i >= 0; i--){
 		for(int j = 0; j < symbolTables[i].index; j++){
@@ -120,10 +142,10 @@ int lookUpTS(char* id){
 	return 0;
 }
 
-void checkDecl(){
-	if(!lookUpTS(yylval)){
+void checkDecl(char* token){
+	if(!lookUpTS(token)){
 		fprintf(stderr,"In file %s\n", filename);
-		fprintf(stderr,"error: %s undeclared, in line: %d, in column: %d\n", yylval, yylineno, column);
+		fprintf(stderr,"error: %s undeclared, in line: %d, in column: %d\n", token, yylineno, column);
 		fprintf(stderr,"%s \n", line_buffer);
 		for(int i = 0; i < column + tokenCounter - 2; i++)
 			fprintf(stderr,"_");
@@ -211,7 +233,7 @@ id
 	: IDENTIFIER {$$ = strdup(yytext);}
 
 primary_expression
-	: id
+	: id {checkDecl($1);}
 	| constant
 	| string
 	| '(' expression ')'
@@ -252,8 +274,8 @@ postfix_expression
 	| postfix_expression '[' expression ']'
 	| postfix_expression '(' ')'
 	| postfix_expression '(' argument_expression_list ')'
-	| postfix_expression '.' id
-	| postfix_expression PTR_OP id
+	| postfix_expression '.' id {checkDecl($1);}
+	| postfix_expression PTR_OP id {checkDecl($1);}
 	| postfix_expression INC_OP
 	| postfix_expression DEC_OP
 	| '(' type_name ')' '{' initializer_list '}'
@@ -381,9 +403,9 @@ constant_expression
 	;
 
 declaration
-	: declaration_specifiers ';'
+	: declaration_specifiers ';' {endDecl();}
 	| declaration_specifiers init_declarator_list ';' {endDecl();}
-	| static_assert_declaration
+	| static_assert_declaration {endDecl();}
 	| error ';'
 	;
 
@@ -432,9 +454,9 @@ type_specifier
 	| BOOL {$$ = strdup(yytext);}
 	| COMPLEX {$$ = strdup(yytext);}
 	| IMAGINARY	 {$$ = strdup(yytext);}  	/* non-mandated extension */
-	| atomic_type_specifier
-	| struct_or_union_specifier
-	| enum_specifier
+	| atomic_type_specifier {$$ = strdup("");}
+	| struct_or_union_specifier {$$ = strdup("");}
+	| enum_specifier {$$ = strdup("");}
 	| TYPEDEF_NAME  {$$ = strdup(yytext);}	/* after it has been defined as such */
 	;
 
@@ -523,7 +545,7 @@ declarator
 	;
 
 direct_declarator
-	: id {saveID($1);}
+	: id {if(checkUndecl($1)) saveID($1);}
 	| '(' declarator ')'
 	| direct_declarator '[' ']'
 	| direct_declarator '[' '*' ']'
@@ -534,7 +556,7 @@ direct_declarator
 	| direct_declarator '[' type_qualifier_list assignment_expression ']'
 	| direct_declarator '[' type_qualifier_list ']'
 	| direct_declarator '[' assignment_expression ']'
-	| direct_declarator '(' parameter_type_list ')'
+	| direct_declarator '(' {openContext();} parameter_type_list ')'
 	| direct_declarator '(' ')'
 	| direct_declarator '(' identifier_list ')'
 	;
@@ -558,8 +580,8 @@ parameter_type_list
 	;
 
 parameter_list
-	: parameter_declaration
-	| parameter_list ',' parameter_declaration
+	: parameter_declaration {endDecl();}
+	| parameter_list ',' parameter_declaration {endDecl();}
 	;
 
 parameter_declaration
@@ -643,20 +665,20 @@ statement
 	: labeled_statement
 	| compound_statement
 	| expression_statement
-	| selection_statement
-	| iteration_statement
+	| {openContext();} selection_statement
+	| {openContext();} iteration_statement
 	| jump_statement
 	;
 
 labeled_statement
-	: id  ':' statement
-	| CASE constant_expression ':' statement
-	| DEFAULT ':' statement
+	: id ':' statement
+	| CASE constant_expression ':' {openContext();} statement
+	| DEFAULT ':' {openContext();} statement
 	;
 
 compound_statement
-	: '{' '}'
-	| '{' {openContext();} block_item_list '}' {closeContext();}
+	: '{' '}' {closeContext();}
+	| '{' block_item_list '}' {closeContext();}
 	;
 
 block_item_list
@@ -666,7 +688,7 @@ block_item_list
 
 block_item
 	: declaration
-	| statement
+	| {openContext();} statement
 	;
 
 expression_statement
@@ -690,7 +712,7 @@ iteration_statement
 	;
 
 jump_statement
-	: GOTO id  ';'
+	: GOTO id ';' {checkDecl($1);}
 	| CONTINUE ';'
 	| BREAK ';'
 	| RETURN ';'
@@ -712,8 +734,8 @@ external_declaration
 	;
 
 function_definition
-	: declaration_specifiers declarator declaration_list compound_statement
-	| declaration_specifiers declarator {endDecl();} compound_statement
+	: declaration_specifiers declarator declaration_list compound_statement {endDecl();}
+	| declaration_specifiers declarator compound_statement {endDecl();}
 	| error compound_statement
 	;
 
