@@ -232,6 +232,9 @@ void yyerror(const char *str)
 id
 	: IDENTIFIER {$$ = strdup(yytext);}
 
+checkIdDecl
+	: id {checkDecl($1);}
+
 primary_expression
 	: id {checkDecl($1);}
 	| constant
@@ -662,7 +665,7 @@ static_assert_declaration
 	;
 
 statement
-	: labeled_statement
+	: {saveType("label");} labeled_statement
 	| compound_statement
 	| expression_statement
 	| {openContext();} selection_statement
@@ -671,7 +674,7 @@ statement
 	;
 
 labeled_statement
-	: id ':' statement
+	: id {saveID($1);} ':' statement {endDecl();}
 	| CASE constant_expression ':' {openContext();} statement
 	| DEFAULT ':' {openContext();} statement
 	;
@@ -712,7 +715,7 @@ iteration_statement
 	;
 
 jump_statement
-	: GOTO id ';' {checkDecl($1);}
+	: GOTO checkIdDecl ';'
 	| CONTINUE ';'
 	| BREAK ';'
 	| RETURN ';'
@@ -745,4 +748,3 @@ declaration_list
 	;
 
 %%
-
