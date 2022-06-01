@@ -464,20 +464,23 @@ type_specifier
 	| COMPLEX {$$ = strdup(yytext);}
 	| IMAGINARY	 {$$ = strdup(yytext);}  	/* non-mandated extension */
 	| atomic_type_specifier {$$ = strdup("");}
-	| struct_or_union_specifier {$$ = strdup("");}
+	| struct_or_union_specifier {endDecl(); $$ = strdup("struct_or_union");}
 	| enum_specifier {endDecl(); $$ = strdup("enum");}
 	| TYPEDEF_NAME  {$$ = strdup(yytext);}	/* after it has been defined as such */
 	;
 
+saveStructUnion
+	: struct_or_union {concatType($1); saveType(typeBuffer);}
+
 struct_or_union_specifier
-	: struct_or_union '{' struct_declaration_list '}'
-	| struct_or_union id  '{' struct_declaration_list '}'
-	| struct_or_union id
+	: saveStructUnion '{' struct_declaration_list '}'
+	| saveStructUnion save_id  '{' struct_declaration_list '}'
+	| saveStructUnion save_id
 	;
 
 struct_or_union
-	: STRUCT
-	| UNION
+	: STRUCT {$$ = strdup(yytext);}
+	| UNION {$$ = strdup(yytext);}
 	;
 
 struct_declaration_list
@@ -486,16 +489,16 @@ struct_declaration_list
 	;
 
 struct_declaration
-	: specifier_qualifier_list ';'	/* for anonymous struct/union */
-	| specifier_qualifier_list struct_declarator_list ';'
-	| static_assert_declaration
+	: specifier_qualifier_list ';' {endDecl();}	/* for anonymous struct/union */
+	| specifier_qualifier_list struct_declarator_list ';' {endDecl();}
+	| static_assert_declaration {endDecl();}
 	;
 
 specifier_qualifier_list
-	: type_specifier specifier_qualifier_list
-	| type_specifier
-	| type_qualifier specifier_qualifier_list
-	| type_qualifier
+	: type_specifier {concatType($1);} specifier_qualifier_list
+	| type_specifier {concatType($1); saveType(typeBuffer);}
+	| type_qualifier {concatType($1);} specifier_qualifier_list
+	| type_qualifier {concatType($1); saveType(typeBuffer);}
 	;
 
 struct_declarator_list
