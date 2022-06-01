@@ -1,5 +1,5 @@
 #Compile the compiler
-all: result main
+all: main
 
 result: lex.yy.c simple.tab.c
 	gcc simple.tab.c lex.yy.c -o result
