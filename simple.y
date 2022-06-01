@@ -250,7 +250,7 @@ constant
 	;
 
 enumeration_constant		/* before it has been defined as such */
-	: id
+	: id {saveID($1);}
 	;
 
 string
@@ -444,6 +444,12 @@ storage_class_specifier
 	| REGISTER {$$ = strdup(yytext);}
 	;
 
+enum
+	: ENUM {$$ = strdup(yytext);}
+
+saveEnum
+	: enum {concatType($1); saveType(typeBuffer);}
+
 type_specifier
 	: VOID {$$ = strdup(yytext);}
 	| CHAR {$$ = strdup(yytext);}
@@ -459,7 +465,7 @@ type_specifier
 	| IMAGINARY	 {$$ = strdup(yytext);}  	/* non-mandated extension */
 	| atomic_type_specifier {$$ = strdup("");}
 	| struct_or_union_specifier {$$ = strdup("");}
-	| enum_specifier {$$ = strdup("");}
+	| enum_specifier {endDecl(); $$ = strdup("enum");}
 	| TYPEDEF_NAME  {$$ = strdup(yytext);}	/* after it has been defined as such */
 	;
 
@@ -503,12 +509,18 @@ struct_declarator
 	| declarator
 	;
 
+save_id
+	: id {saveID($1);}
+
+saveInt
+	: '{' {concatType("int"); saveType(typeBuffer);}
+
 enum_specifier
-	: ENUM '{' enumerator_list '}'
-	| ENUM '{' enumerator_list ',' '}'
-	| ENUM id  '{' enumerator_list '}'
-	| ENUM id  '{' enumerator_list ',' '}'
-	| ENUM id 
+	: saveEnum saveInt enumerator_list '}' {endDecl();}
+	| saveEnum saveInt enumerator_list ',' '}' {endDecl();}
+	| saveEnum save_id saveInt enumerator_list '}' {endDecl();}
+	| saveEnum save_id saveInt enumerator_list ',' '}' {endDecl();}
+	| saveEnum save_id
 	;
 
 enumerator_list
