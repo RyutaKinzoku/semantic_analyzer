@@ -473,8 +473,8 @@ saveStructUnion
 	: struct_or_union {concatType($1); saveType(typeBuffer);}
 
 struct_or_union_specifier
-	: saveStructUnion '{' struct_declaration_list '}'
-	| saveStructUnion save_id  '{' struct_declaration_list '}'
+	: saveStructUnion '{' {openContext();} struct_declaration_list '}' {closeContext();}
+	| saveStructUnion save_id  '{' {openContext();} struct_declaration_list '}' {closeContext();}
 	| saveStructUnion save_id
 	;
 
